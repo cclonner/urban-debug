@@ -2,15 +2,18 @@
   font-family: Arial, sans-serif;
   padding: 20px;
 }
+.header{
+  display: flex;
+}
 
 .input-block {
   margin-bottom: 20px;
 }
 
 .input-block input,
-.input-block button {
+/* .input-block button {
   margin-right: 10px;
-}
+} */
 
 .function-block {
   display: flex;
@@ -51,13 +54,51 @@
   color: red;
 }
 
-.lead-block button {
+/* .lead-block button {
   margin-right: 5px;
-}
+} */
 .bug {
   color: red;
 }
 
 .ok{
   color: green;
+}
+.timer{
+  display: flex;
+}
+.buttons{
+  display: flex;
+  flex-direction: row;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.free {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.confirm {
+  background-color: #9370DB;
+  color: white;
+}
+
+.reject {
+  background-color: #FF0000;
+  color: white;
+}
+
+.busy {
+  background-color: #FFC0CB;
+  color: white;
+}
+
+.button {
+  padding: 10px 20px 10px 20px;
+  font-size: 12px;
+  margin: 2px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }

@@ -23,8 +23,8 @@ interface CustomError extends Error {
 }
 
 function App() {
-  const [username, setUsername] = useState('');
-  const [date, setDate] = useState('');
+  const [username, setUsername] = useState(localStorage.getItem('username') || '');
+  const [date, setDate] = useState(localStorage.getItem('date') || '');
   const [leadId, setLeadId] = useState('');
   const [status, setStatus] = useState('');
   const [statusLead, setStatusLead] = useState('');
@@ -38,12 +38,37 @@ function App() {
   const [selectedLead, setSelectedLead] = useState<Scheduler | null>(null);
   const [formattedDateToFilter, setFormattedDateToFilter] = useState('');
   const [leadURL, setLeadURL] = useState('');
+  const [timer, setTimer] = useState(5);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
 
-    setDate(today);
-  }, []);
+    if (!date) {
+      setDate(today);
+    }
+
+    localStorage.setItem('username', username);
+    localStorage.setItem('date', date);
+  }, [username, date]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isFetching) {
+      interval = setInterval(() => {
+        setTimer((prevTimer) => {
+          if (prevTimer === 1) {
+            fetchData(username, date);
+            return 5;
+          }
+          return prevTimer - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [isFetching, username, date]);
 
   function formatDateToFetch(date: string): string {
     const [year, month, day] = date.split('-');
@@ -54,13 +79,10 @@ function App() {
     const [year, month, day] = date.split('-');
     return `${day}-${month}-${year}`;
   }
-  
 
   async function fetchData(username: string, date: string) {
     try {
       const formattedDate = formatDateToFetch(date);
-      console.log('Получение данных фетч')
-
       const formattedDateToFilter = formatDateToFilter(date);
       setFormattedDateToFilter(formattedDateToFilter);
 
@@ -75,7 +97,6 @@ function App() {
       const data = await response.json();
       setData(data);
       return data;
-      console.log('Данные фетч получены');
     } catch (error: unknown) {
       console.error('Проблемы с подключением:', error);
       if (error instanceof Error) {
@@ -159,18 +180,21 @@ function App() {
   }
 
   const handlePostRequest = (id: number, status: number) => {
-    try {
-      fetch('https://urban-bot2.zudov.pro/api/expert/setStatusScheduler', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: id, status: status }),
-      }).then(() => {
-        fetchData(username, date);
-      });
-    } catch (error) {
-      console.error('Error:', error);
+    const isConfirmed = window.confirm('Вы уверены, что хотите подтвердить этот лид?');
+    if (isConfirmed) {
+      try {
+        fetch('https://urban-bot2.zudov.pro/api/expert/setStatusScheduler', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: id, status: status }),
+        }).then(() => {
+          fetchData(username, date);
+        });
+      } catch (error) {
+        console.error('Error:', error);
+      }
     }
   };
 
@@ -183,23 +207,23 @@ function App() {
       >
         <div>ID: {lead.id}</div>
         <div>Time: {lead.time}</div>
-        <div className={`status ${lead.status === 'Подтвержден' && !lead.statusLead ? 'bug' : 'ok'}`}>
+        <div className={`status ${lead.status === 'Подтвердил' && !lead.statusLead ? 'bug' : 'ok'}`}>
           Статус: {lead.status}
         </div>
         <div className={`status-lead ${lead.status === 'Свободен' && lead.statusLead ? 'bug' : 'ok'}`}>
           Status Lead: {lead.statusLead}
         </div>
         <div className={`lead-id ${lead.status === 'Назначен урок' && !lead.leadId ? 'bug' : 'ok'}`}>
-          Lead ID: {lead.leadId}
+          Lead ID: <a href={`https://b24-a8ju75.bitrix24.ru/crm/lead/details/${lead.leadId}/`}>{lead.leadId}</a>
         </div>
         {selectedLead?.id === lead.id && (
-          <div>
-            <button onClick={() => handlePostRequest(lead.id, 0)}>Освободить</button>
-            <button onClick={() => handlePostRequest(lead.id, 4)}>Подтвердить</button>
-            <button onClick={() => handlePostRequest(lead.id, 3)}>Отклонить</button>
-            <button onClick={() => handlePostRequest(lead.id, 1)}>Занят</button>
+          <div className="buttons">
+            <button className="button free" onClick={() => handlePostRequest(lead.id, 0)}>Освободить</button>
+            <button className="button confirm" onClick={() => handlePostRequest(lead.id, 4)}>Подтвердить</button>
+            <button className="button reject" onClick={() => handlePostRequest(lead.id, 3)}>Отклонить</button>
+            <button className="button busy" onClick={() => handlePostRequest(lead.id, 1)}>Занят</button>
           </div>
-        )}
+      )}
       </div>
     ));
   };
@@ -211,13 +235,28 @@ function App() {
   const extractIdFromUrl = (url: string): string | null => {
     const urlParts = url.split('/');
     const idIndex = urlParts.indexOf('details') + 1;
-  
+
     if (idIndex > 0 && idIndex < urlParts.length) {
       return urlParts[idIndex];
     }
-  
+
     return null;
-  }
+  };
+  const filterLeads = (leads: Scheduler[]) => {
+    return leads.filter((lead) => {
+      return (
+        (!leadId || (lead.leadId && lead.leadId.includes(leadId))) &&
+        (!status || (lead.status && lead.status.includes(status))) &&
+        (!statusLead || (lead.statusLead && lead.statusLead.includes(statusLead)))
+      );
+    });
+  };
+  
+
+  const handleFetchData = () => {
+    fetchData(username, date);
+    setIsFetching(true);
+  };
 
   return (
     <div className="App">
@@ -235,18 +274,18 @@ function App() {
           value={date}
           onChange={(e) => setDate(e.target.value.split('').join(''))}
         />
-        <button onClick={() => fetchData(username, date)}>Получить данные</button>
+        <button onClick={handleFetchData}>Получить данные</button>
+        {isFetching && <p>Обновление через: {timer}</p>}
       </div>
-      <h6>Данные не обновляются в реальном времени, для обновления данных нажмите кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
+      <h6>Данные обновляются в реальном времени по таймеру, также для обновления данных нажмите кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
       <div className="function-block">
         <div className="function-item" style={{ backgroundColor: blockStatus.leadIdBlock }}>
           <input
             type="text"
-            placeholder="URL лида"
-            value={leadURL}
-            onChange={(e) => setLeadURL(e.target.value)}
+            placeholder="Lead ID"
+            value={leadId}
+            onChange={(e) => setLeadId(e.target.value)}
           />
-          <button onClick={() => getLeadByLeadId()}>Получить лид по Битрикс ID</button>
         </div>
         <div className="function-item" style={{ backgroundColor: blockStatus.statusBlock }}>
           <input
@@ -255,7 +294,6 @@ function App() {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           />
-          <button onClick={() => getLastLeadByStatus()}>Получить лид по статусу</button>
         </div>
         <div className="function-item" style={{ backgroundColor: blockStatus.statusLeadBlock }}>
           <input
@@ -264,7 +302,6 @@ function App() {
             value={statusLead}
             onChange={(e) => setStatusLead(e.target.value)}
           />
-          <button onClick={() => getLastLeadByStatusLead()}>Получить лид по <b>status lead</b></button>
         </div>
       </div>
       <div className="result-block">
@@ -279,7 +316,7 @@ function App() {
             {data && (
               <div>
                 <h4>{formattedDateToFilter}</h4>
-                {renderLeads(filterLeadsByCurrentDate(data))}
+                {renderLeads(filterLeads(filterLeadsByCurrentDate(data)))}
               </div>
             )}
           </div>
@@ -290,4 +327,3 @@ function App() {
 }
 
 export default App;
-
