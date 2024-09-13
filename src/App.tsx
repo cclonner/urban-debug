@@ -263,12 +263,17 @@ function App() {
   return (
     <div className="App">
       <div className="input-block">
+      <label>
+        <p>Телеграм эксперта</p>
         <input
           type="text"
-          placeholder="Телегам"
+          placeholder="Телеграм"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
+      </label>
+      <label>
+        <p>Дата</p>
         <input
           type="date"
           data-date=""
@@ -276,10 +281,16 @@ function App() {
           value={date}
           onChange={(e) => setDate(e.target.value.split('').join(''))}
         />
+      </label>
+
+        
+      </div>
+      <label>
         <button onClick={handleFetchData}>Получить данные</button>
         {isFetching && <p>Обновление через: {timer}</p>}
-      </div>
-      <h6>Данные обновляются в реальном времени по таймеру, также для обновления данных нажмите кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
+      </label>
+      <h6>Данные обновляются в реальном времени по таймеру, также для обновления данных нажми кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
+      <h6>Нужно ввести тг эксперта, а затем нажать на нужный лид. лиды с багами подсвечиваются красным, после нажатия отправляется пост запрос на изменение. По идее, если не получается подтвердить или отказаться, то выйдет сообщение</h6>
       <div className="function-block">
         <div className="function-item" style={{ backgroundColor: blockStatus.leadIdBlock }}>
           <input
@@ -315,9 +326,9 @@ function App() {
         ) : (
           <div>
             <h3>Все лиды</h3>
+            <h4>{formattedDateToFilter}</h4>
             {data && (
-              <div>
-                <h4>{formattedDateToFilter}</h4>
+              <div className="leads">
                 {renderLeads(filterLeads(filterLeadsByCurrentDate(data)))}
               </div>
             )}
