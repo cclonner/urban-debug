@@ -37,6 +37,7 @@ function App() {
   });
   const [selectedLead, setSelectedLead] = useState<Scheduler | null>(null);
   const [formattedDateToFilter, setFormattedDateToFilter] = useState('');
+  const [leadURL, setLeadURL] = useState('');
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -87,12 +88,14 @@ function App() {
     }
   }
 
-  async function getLeadByLeadId(data: Day[], id: string) {
+  async function getLeadByLeadId() {
     if (!data) return;
+
+    const leadId = extractIdFromUrl(leadURL);
 
     for (const day of data) {
       for (const scheduler of day.schedulers) {
-        if (scheduler.leadId === id) {
+        if (scheduler.leadId === leadId) {
           setResult(scheduler);
           setBlockStatus((prev) => ({ ...prev, leadIdBlock: 'green' }));
           return scheduler;
@@ -105,7 +108,7 @@ function App() {
     return null;
   }
 
-  async function getLastLeadByStatus(data: Day[], status: string) {
+  async function getLastLeadByStatus() {
     if (!data) return;
 
     let lastLead = null;
@@ -130,7 +133,7 @@ function App() {
     }
   }
 
-  async function getLastLeadByStatusLead(data: Day[], statusLead: string) {
+  async function getLastLeadByStatusLead() {
     if (!data) return;
 
     let lastLead = null;
@@ -155,33 +158,6 @@ function App() {
     }
   }
 
-  const handleFetchData = async () => {
-    console.log('Колбек на получение фетч');
-    await fetchData(username, date);
-  };
-
-  const handleGetLeadByLeadId = async () => {
-    if (data) {
-      await getLeadByLeadId(data, leadId);
-    }
-  };
-
-  const handleGetLastLeadByStatus = async () => {
-    if (data) {
-      await getLastLeadByStatus(data, status);
-    }
-  };
-
-  const handleGetLastLeadByStatusLead = async () => {
-    if (data) {
-      await getLastLeadByStatusLead(data, statusLead);
-    }
-  };
-
-  const handleSelectLead = (lead: Scheduler) => {
-    setSelectedLead(lead);
-  };
-
   const handlePostRequest = (id: number, status: number) => {
     try {
       fetch('https://urban-bot2.zudov.pro/api/expert/setStatusScheduler', {
@@ -191,7 +167,7 @@ function App() {
         },
         body: JSON.stringify({ id: id, status: status }),
       }).then(() => {
-        handleFetchData();
+        fetchData(username, date);
       });
     } catch (error) {
       console.error('Error:', error);
@@ -203,7 +179,7 @@ function App() {
       <div
         key={lead.id}
         className={`lead-block ${selectedLead?.id === lead.id ? 'selected' : ''}`}
-        onClick={() => handleSelectLead(lead)}
+        onClick={() => setSelectedLead(lead)}
       >
         <div>ID: {lead.id}</div>
         <div>Time: {lead.time}</div>
@@ -232,6 +208,17 @@ function App() {
     return data.find((day) => day.date === formattedDateToFilter)?.schedulers || [];
   };
 
+  const extractIdFromUrl = (url: string): string | null => {
+    const urlParts = url.split('/');
+    const idIndex = urlParts.indexOf('details') + 1;
+  
+    if (idIndex > 0 && idIndex < urlParts.length) {
+      return urlParts[idIndex];
+    }
+  
+    return null;
+  }
+
   return (
     <div className="App">
       <div className="input-block">
@@ -246,20 +233,20 @@ function App() {
           data-date=""
           data-date-format="MMMM DD YYYY"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(e) => setDate(e.target.value.split('').join(''))}
         />
-        <button onClick={handleFetchData}>Получить данные</button>
+        <button onClick={() => fetchData(username, date)}>Получить данные</button>
       </div>
       <h6>Данные не обновляются в реальном времени, для обновления данных нажмите кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
       <div className="function-block">
         <div className="function-item" style={{ backgroundColor: blockStatus.leadIdBlock }}>
           <input
             type="text"
-            placeholder="id лида"
-            value={leadId}
-            onChange={(e) => setLeadId(e.target.value)}
+            placeholder="URL лида"
+            value={leadURL}
+            onChange={(e) => setLeadURL(e.target.value)}
           />
-          <button onClick={handleGetLeadByLeadId}>Получить лид по Битрикс ID</button>
+          <button onClick={() => getLeadByLeadId()}>Получить лид по Битрикс ID</button>
         </div>
         <div className="function-item" style={{ backgroundColor: blockStatus.statusBlock }}>
           <input
@@ -268,7 +255,7 @@ function App() {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           />
-          <button onClick={handleGetLastLeadByStatus}>Получить лид по статусу</button>
+          <button onClick={() => getLastLeadByStatus()}>Получить лид по статусу</button>
         </div>
         <div className="function-item" style={{ backgroundColor: blockStatus.statusLeadBlock }}>
           <input
@@ -277,7 +264,7 @@ function App() {
             value={statusLead}
             onChange={(e) => setStatusLead(e.target.value)}
           />
-          <button onClick={handleGetLastLeadByStatusLead}>Получить лид по <b>status lead</b></button>
+          <button onClick={() => getLastLeadByStatusLead()}>Получить лид по <b>status lead</b></button>
         </div>
       </div>
       <div className="result-block">
@@ -303,3 +290,4 @@ function App() {
 }
 
 export default App;
+
