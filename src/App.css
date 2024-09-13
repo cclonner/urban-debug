@@ -1,0 +1,63 @@
+.App {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+
+.input-block {
+  margin-bottom: 20px;
+}
+
+.input-block input,
+.input-block button {
+  margin-right: 10px;
+}
+
+.function-block {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.function-item {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+
+.function-item input {
+  margin-right: 10px;
+}
+
+.result-block {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.lead-block {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.lead-block.selected {
+  background-color: #f0f0f0;
+}
+
+.lead-block .bug {
+  color: red;
+}
+
+.lead-block button {
+  margin-right: 5px;
+}
+.bug {
+  color: red;
+}
+
+.ok{
+  color: green;
+}
