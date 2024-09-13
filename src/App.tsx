@@ -189,7 +189,9 @@ function App() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ id: id, status: status }),
-        }).then(() => {
+        })    .then((response) => response.text())
+        .then((text) => {
+          window.confirm('Ответ от запроса: ' + text);
           fetchData(username, date);
         });
       } catch (error) {
