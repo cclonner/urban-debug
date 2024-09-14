@@ -40,6 +40,7 @@ function App() {
   const [leadURL, setLeadURL] = useState('');
   const [timer, setTimer] = useState(5);
   const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -90,6 +91,7 @@ function App() {
         `https://urban-bot2.zudov.pro/api/expert/getScheduler?username=${username}&dateStart=${formattedDate}`,
       );
       if (!response.ok) {
+        setError(`Проблемы с получением данных под именем: ${username}, число: ${date}. Скорее всего первая буква тг должна быть строчной) Status: ${response.status} ${response.statusText}`);
         throw new Error(
           `Проблемы с получением данных под именем: ${username}, число: ${date}. Status: ${response.status} ${response.statusText}`,
         );
@@ -113,6 +115,13 @@ function App() {
     if (!data) return;
 
     const leadId = extractIdFromUrl(leadURL);
+
+    if (!leadId) {
+      console.log('Invalid lead URL');
+      setResult(null);
+      setBlockStatus((prev) => ({ ...prev, leadIdBlock: 'red' }));
+      return null;
+    }
 
     for (const day of data) {
       for (const scheduler of day.schedulers) {
@@ -189,10 +198,14 @@ function App() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ id: id, status: status }),
-        })    .then((response) => response.text())
+        })
+        .then((response) => response.text())
         .then((text) => {
           window.confirm('Ответ от запроса: ' + text);
           fetchData(username, date);
+        })
+        .catch((error) => {
+          console.error('Error:', error);
         });
       } catch (error) {
         console.error('Error:', error);
@@ -201,6 +214,10 @@ function App() {
   };
 
   const renderLeads = (leads: Scheduler[]) => {
+    if (!leads || leads.length === 0) {
+      return <p>No leads found</p>;
+    }
+
     return leads.map((lead) => (
       <div
         key={lead.id}
@@ -225,7 +242,7 @@ function App() {
             <button className="button reject" onClick={() => handlePostRequest(lead.id, 3)}>Отклонить</button>
             <button className="button busy" onClick={() => handlePostRequest(lead.id, 1)}>Занят</button>
           </div>
-      )}
+        )}
       </div>
     ));
   };
@@ -244,6 +261,7 @@ function App() {
 
     return null;
   };
+
   const filterLeads = (leads: Scheduler[]) => {
     return leads.filter((lead) => {
       return (
@@ -253,7 +271,6 @@ function App() {
       );
     });
   };
-  
 
   const handleFetchData = () => {
     fetchData(username, date);
@@ -263,27 +280,25 @@ function App() {
   return (
     <div className="App">
       <div className="input-block">
-      <label>
-        <p>Телеграм эксперта</p>
-        <input
-          type="text"
-          placeholder="Телеграм"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-      </label>
-      <label>
-        <p>Дата</p>
-        <input
-          type="date"
-          data-date=""
-          data-date-format="MMMM DD YYYY"
-          value={date}
-          onChange={(e) => setDate(e.target.value.split('').join(''))}
-        />
-      </label>
-
-        
+        <label>
+          <p>Телеграм эксперта</p>
+          <input
+            type="text"
+            placeholder="Телеграм"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+        </label>
+        <label>
+          <p>Дата</p>
+          <input
+            type="date"
+            data-date=""
+            data-date-format="MMMM DD YYYY"
+            value={date}
+            onChange={(e) => setDate(e.target.value.split('').join(''))}
+          />
+        </label>
       </div>
       <label>
         <button onClick={handleFetchData}>Получить данные</button>
@@ -327,11 +342,13 @@ function App() {
           <div>
             <h3>Все лиды</h3>
             <h4>{formattedDateToFilter}</h4>
-            {data && (
+            {data ? (
               <div className="leads">
                 {renderLeads(filterLeads(filterLeadsByCurrentDate(data)))}
               </div>
-            )}
+            ) : error ? (
+              <p>{error}</p>
+            ) : null}
           </div>
         )}
       </div>
