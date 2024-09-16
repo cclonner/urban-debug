@@ -86,11 +86,12 @@ function App() {
       const formattedDate = formatDateToFetch(date);
       const formattedDateToFilter = formatDateToFilter(date);
       setFormattedDateToFilter(formattedDateToFilter);
-
+  
       const response = await fetch(
         `https://urban-bot2.zudov.pro/api/expert/getScheduler?username=${username}&dateStart=${formattedDate}`,
       );
       if (!response.ok) {
+        setData(null); // Clear the data state
         setError(`Проблемы с получением данных под именем: ${username}, число: ${date}. Скорее всего первая буква тг должна быть строчной) Status: ${response.status} ${response.statusText}`);
         throw new Error(
           `Проблемы с получением данных под именем: ${username}, число: ${date}. Status: ${response.status} ${response.statusText}`,
@@ -110,6 +111,7 @@ function App() {
       return null;
     }
   }
+  
 
   async function getLeadByLeadId() {
     if (!data) return;
@@ -357,3 +359,4 @@ function App() {
 }
 
 export default App;
+
