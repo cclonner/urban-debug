@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+// import UrlToggleButton from './UrlToggleButton';
 
 interface Scheduler {
   id: number;
@@ -37,10 +38,11 @@ function App() {
   });
   const [selectedLead, setSelectedLead] = useState<Scheduler | null>(null);
   const [formattedDateToFilter, setFormattedDateToFilter] = useState('');
-  const [leadURL, setLeadURL] = useState('');
   const [timer, setTimer] = useState(5);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState('');
+  const [isKids, setIsKids] = useState(false);
+  const [isManagerSearch, setIsManagerSearch] = useState(false);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -69,7 +71,7 @@ function App() {
     }
 
     return () => clearInterval(interval);
-  }, [isFetching, username, date]);
+  }, [isFetching, username, date, isKids, isManagerSearch]);
 
   function formatDateToFetch(date: string): string {
     const [year, month, day] = date.split('-');
@@ -86,13 +88,23 @@ function App() {
       const formattedDate = formatDateToFetch(date);
       const formattedDateToFilter = formatDateToFilter(date);
       setFormattedDateToFilter(formattedDateToFilter);
-  
-      const response = await fetch(
-        `https://urban-bot2.zudov.pro/api/expert/getScheduler?username=${username}&dateStart=${formattedDate}`,
-      );
+
+      let url = '';
+      if (isManagerSearch) {
+        url = isKids
+          ? `https://urban-kids-manager.ru/api/Admin/getSchedulerV2?username=%40markelova_pro_sales&date=${formattedDate}&pageNumber=1&pageSize=100`
+          : `https://urban-bot2.zudov.pro/api/Admin/getSchedulerV2?username=%40serkornilov&date=${formattedDate}&pageNumber=1&pageSize=1000`;
+      } else {
+        url = isKids
+          ? `https://urban-kids-manager.ru/api/Expert/getSchedulerV2?username=${username}&dateStart=${formattedDate}`
+          : `https://urban-bot2.zudov.pro/api/expert/getScheduler?username=${username}&dateStart=${formattedDate}`;
+      }
+
+      const response = await fetch(url);
+
       if (!response.ok) {
-        setData(null); // Clear the data state
-        setError(`Проблемы с получением данных под именем: ${username}, число: ${date}. Скорее всего первая буква тг должна быть строчной) Status: ${response.status} ${response.statusText}`);
+        setData(null);
+        setError(`Проблемы с получением данных под именем: ${username}, число: ${date}. Status: ${response.status} ${response.statusText}`);
         throw new Error(
           `Проблемы с получением данных под именем: ${username}, число: ${date}. Status: ${response.status} ${response.statusText}`,
         );
@@ -111,90 +123,16 @@ function App() {
       return null;
     }
   }
-  
-
-  async function getLeadByLeadId() {
-    if (!data) return;
-
-    const leadId = extractIdFromUrl(leadURL);
-
-    if (!leadId) {
-      console.log('Invalid lead URL');
-      setResult(null);
-      setBlockStatus((prev) => ({ ...prev, leadIdBlock: 'red' }));
-      return null;
-    }
-
-    for (const day of data) {
-      for (const scheduler of day.schedulers) {
-        if (scheduler.leadId === leadId) {
-          setResult(scheduler);
-          setBlockStatus((prev) => ({ ...prev, leadIdBlock: 'green' }));
-          return scheduler;
-        }
-      }
-    }
-    console.log('Lead не найден');
-    setResult(null);
-    setBlockStatus((prev) => ({ ...prev, leadIdBlock: 'red' }));
-    return null;
-  }
-
-  async function getLastLeadByStatus() {
-    if (!data) return;
-
-    let lastLead = null;
-
-    for (const day of data) {
-      for (const scheduler of day.schedulers) {
-        if (scheduler.status === status) {
-          lastLead = scheduler;
-        }
-      }
-    }
-
-    if (lastLead) {
-      setResult(lastLead);
-      setBlockStatus((prev) => ({ ...prev, statusBlock: 'green' }));
-      return lastLead;
-    } else {
-      console.log('Lead не найден');
-      setResult(null);
-      setBlockStatus((prev) => ({ ...prev, statusBlock: 'red' }));
-      return null;
-    }
-  }
-
-  async function getLastLeadByStatusLead() {
-    if (!data) return;
-
-    let lastLead = null;
-
-    for (const day of data) {
-      for (const scheduler of day.schedulers) {
-        if (scheduler.statusLead === statusLead) {
-          lastLead = scheduler;
-        }
-      }
-    }
-
-    if (lastLead) {
-      setResult(lastLead);
-      setBlockStatus((prev) => ({ ...prev, statusLeadBlock: 'green' }));
-      return lastLead;
-    } else {
-      console.log('Lead не найден');
-      setResult(null);
-      setBlockStatus((prev) => ({ ...prev, statusLeadBlock: 'red' }));
-      return null;
-    }
-  }
 
   const handlePostRequest = (id: number, status: number) => {
     const isConfirmed = window.confirm('Вы уверены, что хотите подтвердить этот лид?');
     if (isConfirmed) {
       try {
-        fetch('https://urban-bot2.zudov.pro/api/expert/setStatusScheduler', {
+        let url = isKids
+          ? `https://urban-kids-manager.ru/api/Expert/setStatusScheduler`
+          : `https://urban-bot2.zudov.pro/api/expert/setStatusScheduler`;
+
+        fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -213,7 +151,7 @@ function App() {
         console.error('Error:', error);
       }
     }
-  };
+  };  
 
   const renderLeads = (leads: Scheduler[]) => {
     if (!leads || leads.length === 0) {
@@ -249,8 +187,12 @@ function App() {
     ));
   };
 
-  const filterLeadsByCurrentDate = (data: Day[]) => {
-    return data.find((day) => day.date === formattedDateToFilter)?.schedulers || [];
+  const filterLeadsByCurrentDate = (data: Day[] | { paginatedUsers: { items: { schedulers: Scheduler[] }[] } }) => {
+    if (Array.isArray(data)) {
+      return data.find((day) => day.date === formattedDateToFilter)?.schedulers || [];
+    } else {
+      return data.paginatedUsers.items.flatMap((item) => item.schedulers);
+    }
   };
 
   const extractIdFromUrl = (url: string): string | null => {
@@ -261,7 +203,7 @@ function App() {
       return urlParts[idIndex];
     }
 
-    return null;
+    return url;
   };
 
   const filterLeads = (leads: Scheduler[]) => {
@@ -277,6 +219,12 @@ function App() {
   const handleFetchData = () => {
     fetchData(username, date);
     setIsFetching(true);
+  };
+
+  const handleLeadIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const extractedId = extractIdFromUrl(value);
+    setLeadId(extractedId || value);
   };
 
   return (
@@ -306,6 +254,15 @@ function App() {
         <button onClick={handleFetchData}>Получить данные</button>
         {isFetching && <p>Обновление через: {timer}</p>}
       </label>
+
+      <label>
+        <input type="checkbox" checked={isKids} onChange={() => setIsKids(!isKids)} />
+        Urman Kids
+      </label>
+      <label>
+        <input type="checkbox" checked={isManagerSearch} onChange={() => setIsManagerSearch(!isManagerSearch)} />
+        Все лиды(от имени руководителя)
+      </label>
       <h6>Данные обновляются в реальном времени по таймеру, также для обновления данных нажми кнопку получить данные или кнопку действия, будь-то освободить, подтвердить и тд</h6>
       <h6>Нужно ввести тг эксперта, а затем нажать на нужный лид. лиды с багами подсвечиваются красным, после нажатия отправляется пост запрос на изменение. По идее, если не получается подтвердить или отказаться, то выйдет сообщение</h6>
       <div className="function-block">
@@ -314,7 +271,7 @@ function App() {
             type="text"
             placeholder="Lead ID"
             value={leadId}
-            onChange={(e) => setLeadId(e.target.value)}
+            onChange={handleLeadIdChange}
           />
         </div>
         <div className="function-item" style={{ backgroundColor: blockStatus.statusBlock }}>
@@ -359,4 +316,3 @@ function App() {
 }
 
 export default App;
-
